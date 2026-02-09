@@ -2,7 +2,7 @@
   "name": "c-programming-quiz-app",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://p2bhaskar.github.io/c-programming-quiz-app",
+  "homepage": "https://p2bhaskar.github.io/dbms-quiz-app",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
