@@ -773,10 +773,25 @@
 import React, { useState } from "react";
 import ResultReview from "./ResultReview";
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyBONu9pdAxFGjNwSHs1MQHc__6ISOhnsOkx_dbx1M_oln7zdTpHGzPpABz4_mszZYFnA/exec";
+const API_URL =
+"https://script.google.com/macros/s/AKfycbyBONu9pdAxFGjNwSHs1MQHc__6ISOhnsOkx_dbx1M_oln7zdTpHGzPpABz4_mszZYFnA/exec";
 
 
-export default function Quiz(){
+// ---------- SAFE API CALL (CORS FIX) ----------
+const callAPI = async (payload) => {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "text/plain"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  return res.json();
+};
+
+
+export default function Quiz() {
 
 const [name,setName]=useState("");
 const [prn,setPrn]=useState("");
@@ -789,94 +804,93 @@ const [finished,setFinished]=useState(false);
 const [score,setScore]=useState(0);
 
 
-// ---------- shuffle ----------
+// ---------- RANDOMIZE ----------
 function shuffle(arr){
- return [...arr].sort(()=>Math.random()-0.5).slice(0,50);
+  return [...arr]
+    .sort(()=>Math.random()-0.5)
+    .slice(0,50);
 }
 
 
 // ---------- START QUIZ ----------
 const startQuiz = async()=>{
 
- const v = await fetch(API_URL,{
-  method:"POST",
-  body:JSON.stringify({
+  if(!name || !prn){
+    alert("Enter Name & PRN");
+    return;
+  }
+
+  const valid = await callAPI({
     action:"validate",
     prn:prn
-  })
- });
+  });
 
- const valid = await v.json();
+  if(valid.status==="NOT_ALLOWED"){
+    alert("PRN not allowed");
+    return;
+  }
 
- if(valid.status==="NOT_ALLOWED"){
-  alert("PRN not allowed");
-  return;
- }
+  if(valid.status==="ALREADY_SUBMITTED"){
+    alert("You already attempted exam");
+    return;
+  }
 
- if(valid.status==="ALREADY_SUBMITTED"){
-  alert("You already attempted exam");
-  return;
- }
+  const data = await callAPI({
+    action:"questions"
+  });
 
- const q = await fetch(API_URL,{
-  method:"POST",
-  body:JSON.stringify({action:"questions"})
- });
-
- const data = await q.json();
-
- setQuestions(shuffle(data));
- setStarted(true);
+  setQuestions(shuffle(data));
+  setStarted(true);
 };
 
 
-// ---------- ANSWER ----------
+// ---------- SELECT OPTION ----------
 const selectOption=(index)=>{
- setAnswers({...answers,[current]:index+1});
+  setAnswers({
+    ...answers,
+    [current]: index+1
+  });
 };
 
 
 // ---------- NEXT ----------
 const next=()=>{
-
- if(current < questions.length-1)
-  setCurrent(current+1);
- else
-  submitExam();
+  if(current < questions.length-1)
+    setCurrent(current+1);
+  else
+    submitExam();
 };
 
 
 // ---------- SUBMIT ----------
 const submitExam = async()=>{
 
- let s=0;
+  let s=0;
 
- questions.forEach((q,i)=>{
-   if(answers[i] === q.answer)
-     s++;
- });
+  questions.forEach((q,i)=>{
+    if(answers[i] === q.answer)
+      s++;
+  });
 
- setScore(s);
+  setScore(s);
 
- await fetch(API_URL,{
-  method:"POST",
-  body:JSON.stringify({
+  await callAPI({
     action:"submit",
     name:name,
     prn:prn,
     score:s,
     total:50
-  })
- });
+  });
 
- setFinished(true);
+  setFinished(true);
 };
 
 
-// ---------- UI BEFORE START ----------
+// ---------- START SCREEN ----------
 if(!started)
 return(
 <div style={{padding:40}}>
+
 <h2>C Programming Unit 1 Quiz</h2>
 
 <input
@@ -907,14 +921,14 @@ Start Exam
 if(finished)
 return(
 <ResultReview
- questions={questions}
- answers={answers}
- score={score}
+  questions={questions}
+  answers={answers}
+  score={score}
 />
 );
 
 
-// ---------- QUIZ PAGE ----------
+// ---------- QUIZ UI ----------
 const q=questions[current];
 
 return(
@@ -947,5 +961,5 @@ Question {current+1} / 50
 
 </div>
 );
-
 }
+
