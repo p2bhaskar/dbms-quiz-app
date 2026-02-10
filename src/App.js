@@ -22,7 +22,7 @@
 // export default App;
 
 import React from "react";
-import Quiz from "./Quiz";
+import Quiz from "./components/QuizPage";
 
 export default function App() {
   return <Quiz/>;
