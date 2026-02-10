@@ -770,207 +770,182 @@
 // export default QuizPage;
 
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getAllQuestions, getQuestionsByTopic } from '../data/cprogramming/quizData';
+import React, { useState } from "react";
+import ResultReview from "./ResultReview";
 
-const QuizPage = () => {
-  const { subject, level } = useParams();
-  const navigate = useNavigate();
-  const location = useLocation();
+const API_URL = "https://script.google.com/macros/s/AKfycbyBONu9pdAxFGjNwSHs1MQHc__6ISOhnsOkx_dbx1M_oln7zdTpHGzPpABz4_mszZYFnA/exec";
 
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [timeLeft, setTimeLeft] = useState(600);
-  const [quizCompleted, setQuizCompleted] = useState(false);
 
-  const [showNamePrompt, setShowNamePrompt] = useState(false);
-  const [studentName, setStudentName] = useState('');
+export default function Quiz(){
 
-  const selectedTopic = location.state?.topic || 'all';
+const [name,setName]=useState("");
+const [prn,setPrn]=useState("");
 
-  const questions =
-    selectedTopic === 'all'
-      ? getAllQuestions(subject, level)
-      : getQuestionsByTopic(subject, level, selectedTopic);
+const [started,setStarted]=useState(false);
+const [questions,setQuestions]=useState([]);
+const [current,setCurrent]=useState(0);
+const [answers,setAnswers]=useState({});
+const [finished,setFinished]=useState(false);
+const [score,setScore]=useState(0);
 
-  useEffect(() => {
-    if (questions.length === 0) {
-      navigate('/');
-      return;
-    }
 
-    const timer = setInterval(() => {
-      setTimeLeft((time) => {
-        if (time <= 1) {
-          clearInterval(timer);
-          handleQuizSubmit();
-          return 0;
-        }
-        return time - 1;
-      });
-    }, 1000);
+// ---------- shuffle ----------
+function shuffle(arr){
+ return [...arr].sort(()=>Math.random()-0.5).slice(0,50);
+}
 
-    return () => clearInterval(timer);
-  }, [questions.length, navigate]);
 
-  const handleAnswerSelect = (questionId, answerIndex) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: answerIndex
-    }));
-  };
+// ---------- START QUIZ ----------
+const startQuiz = async()=>{
 
-  const calculateScore = () => {
-    return questions.reduce((score, question) => {
-      if (answers[question.id] === question.correctAnswer) {
-        return score + 1;
-      }
-      return score;
-    }, 0);
-  };
+ const v = await fetch(API_URL,{
+  method:"POST",
+  body:JSON.stringify({
+    action:"validate",
+    prn:prn
+  })
+ });
 
-  const handleQuizSubmit = () => {
-    if (quizCompleted) return;
-    setQuizCompleted(true);
-    setShowNamePrompt(true);
-  };
+ const valid = await v.json();
 
-  const submitWithName = async () => {
+ if(valid.status==="NOT_ALLOWED"){
+  alert("PRN not allowed");
+  return;
+ }
 
-    const score = calculateScore();
-    const timeTaken = `${Math.floor((600 - timeLeft) / 60)}m ${(600 - timeLeft) % 60}s`;
+ if(valid.status==="ALREADY_SUBMITTED"){
+  alert("You already attempted exam");
+  return;
+ }
 
-    try {
-      await fetch(
-        "https://script.google.com/macros/s/AKfycbxsWOevBXNyVmpOMVKsyHvdzA9h4MC3GoSZK3RWqJxrY9WOAwJCFuDEmQi-vnjdyohizA/exec",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            name: studentName,
-            score: score,
-            time: timeTaken
-          })
-        }
-      );
-    } catch (e) {
-      console.log("Sheet error:", e);
-    }
+ const q = await fetch(API_URL,{
+  method:"POST",
+  body:JSON.stringify({action:"questions"})
+ });
 
-    localStorage.setItem('quizResults', JSON.stringify({
-      subject,
-      level,
-      topic: selectedTopic,
-      score,
-      totalQuestions: questions.length,
-      answers,
-      questions
-    }));
+ const data = await q.json();
 
-    navigate('/results');
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  const getQuestionStatus = (questionId) => {
-    return answers[questionId] !== undefined ? 'attempted' : 'unattempted';
-  };
-
-  const currentQ = questions[currentQuestion];
-
-  return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto">
-
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold">
-                {level === 'basic' ? 'Unit 1' : 'Advanced'} Quiz
-              </h1>
-              <p>Topic: {selectedTopic}</p>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className={`text-lg font-semibold ${timeLeft < 60 ? 'text-red-600' : ''}`}>
-                ⏱️ {formatTime(timeLeft)}
-              </div>
-
-              <button
-                onClick={handleQuizSubmit}
-                className="bg-green-500 text-white px-5 py-2 rounded-lg"
-              >
-                Submit Quiz
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Question */}
-        <div className="bg-white rounded-xl shadow-lg p-6">
-          <h2 className="text-lg font-semibold mb-4">
-            Q{currentQuestion + 1}: {currentQ.question}
-          </h2>
-
-          {currentQ.options.map((opt, i) => (
-            <label key={i} className="block border p-3 rounded-lg mb-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={answers[currentQ.id] === i}
-                onChange={() => handleAnswerSelect(currentQ.id, i)}
-                className="mr-2"
-              />
-              {opt}
-            </label>
-          ))}
-
-          <div className="flex justify-between mt-6">
-            <button
-              onClick={() => setCurrentQuestion(p => Math.max(0, p - 1))}
-              className="bg-gray-400 text-white px-5 py-2 rounded"
-            >
-              Prev
-            </button>
-
-            <button
-              onClick={() => setCurrentQuestion(p => Math.min(questions.length - 1, p + 1))}
-              className="bg-blue-500 text-white px-5 py-2 rounded"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Name Popup */}
-      {showNamePrompt && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-6 rounded-xl w-80">
-            <h3 className="text-lg font-semibold mb-3">Enter Name</h3>
-
-            <input
-              value={studentName}
-              onChange={(e) => setStudentName(e.target.value)}
-              className="w-full border p-2 rounded mb-4"
-            />
-
-            <button
-              disabled={!studentName}
-              onClick={submitWithName}
-              className="w-full bg-blue-500 text-white py-2 rounded"
-            >
-              Submit Result
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+ setQuestions(shuffle(data));
+ setStarted(true);
 };
 
-export default QuizPage;
+
+// ---------- ANSWER ----------
+const selectOption=(index)=>{
+ setAnswers({...answers,[current]:index+1});
+};
+
+
+// ---------- NEXT ----------
+const next=()=>{
+
+ if(current < questions.length-1)
+  setCurrent(current+1);
+ else
+  submitExam();
+};
+
+
+// ---------- SUBMIT ----------
+const submitExam = async()=>{
+
+ let s=0;
+
+ questions.forEach((q,i)=>{
+   if(answers[i] === q.answer)
+     s++;
+ });
+
+ setScore(s);
+
+ await fetch(API_URL,{
+  method:"POST",
+  body:JSON.stringify({
+    action:"submit",
+    name:name,
+    prn:prn,
+    score:s,
+    total:50
+  })
+ });
+
+ setFinished(true);
+};
+
+
+// ---------- UI BEFORE START ----------
+if(!started)
+return(
+<div style={{padding:40}}>
+<h2>C Programming Unit 1 Quiz</h2>
+
+<input
+ placeholder="Name"
+ value={name}
+ onChange={e=>setName(e.target.value)}
+/>
+
+<br/><br/>
+
+<input
+ placeholder="PRN"
+ value={prn}
+ onChange={e=>setPrn(e.target.value)}
+/>
+
+<br/><br/>
+
+<button onClick={startQuiz}>
+Start Exam
+</button>
+
+</div>
+);
+
+
+// ---------- RESULT ----------
+if(finished)
+return(
+<ResultReview
+ questions={questions}
+ answers={answers}
+ score={score}
+/>
+);
+
+
+// ---------- QUIZ PAGE ----------
+const q=questions[current];
+
+return(
+<div style={{padding:30}}>
+
+<h3>
+Question {current+1} / 50
+</h3>
+
+<p>{q.question}</p>
+
+{q.options.map((op,i)=>(
+<div key={i}>
+<label>
+<input
+ type="radio"
+ checked={answers[current]===i+1}
+ onChange={()=>selectOption(i)}
+/>
+{op}
+</label>
+</div>
+))}
+
+<br/>
+
+<button onClick={next}>
+{current===49 ? "Submit Exam" : "Next"}
+</button>
+
+</div>
+);
+
+}

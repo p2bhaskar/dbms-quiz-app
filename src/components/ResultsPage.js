@@ -490,54 +490,112 @@
 // export default ResultsPage;
 
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import React, { useState, useEffect } from 'react';
+// import { useNavigate } from 'react-router-dom';
 
-const ResultsPage = () => {
-  const navigate = useNavigate();
-  const [results, setResults] = useState(null);
+// const ResultsPage = () => {
+//   const navigate = useNavigate();
+//   const [results, setResults] = useState(null);
 
-  useEffect(() => {
-    const storedResults = localStorage.getItem('quizResults');
-    if (storedResults) {
-      setResults(JSON.parse(storedResults));
-    } else {
-      navigate('/');
-    }
-  }, [navigate]);
+//   useEffect(() => {
+//     const storedResults = localStorage.getItem('quizResults');
+//     if (storedResults) {
+//       setResults(JSON.parse(storedResults));
+//     } else {
+//       navigate('/');
+//     }
+//   }, [navigate]);
 
-  if (!results) return null;
+//   if (!results) return null;
 
-  const { score, totalQuestions, topic } = results;
-  const percent = Math.round((score / totalQuestions) * 100);
+//   const { score, totalQuestions, topic } = results;
+//   const percent = Math.round((score / totalQuestions) * 100);
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white shadow-xl rounded-xl p-8 text-center">
+//   return (
+//     <div className="min-h-screen flex items-center justify-center bg-gray-50">
+//       <div className="bg-white shadow-xl rounded-xl p-8 text-center">
 
-        <h1 className="text-3xl font-bold mb-6">Quiz Completed</h1>
+//         <h1 className="text-3xl font-bold mb-6">Quiz Completed</h1>
 
-        <div className="text-6xl font-bold text-blue-600 mb-4">
-          {percent}%
-        </div>
+//         <div className="text-6xl font-bold text-blue-600 mb-4">
+//           {percent}%
+//         </div>
 
-        <p className="text-xl mb-2">
-          Score: {score} / {totalQuestions}
-        </p>
+//         <p className="text-xl mb-2">
+//           Score: {score} / {totalQuestions}
+//         </p>
 
-        <p className="mb-6 text-gray-600">
-          Topic: {topic}
-        </p>
+//         <p className="mb-6 text-gray-600">
+//           Topic: {topic}
+//         </p>
 
-        <button
-          onClick={() => navigate('/')}
-          className="bg-gray-600 text-white px-6 py-3 rounded-lg"
-        >
-          Back Home
-        </button>
-      </div>
-    </div>
-  );
-};
+//         <button
+//           onClick={() => navigate('/')}
+//           className="bg-gray-600 text-white px-6 py-3 rounded-lg"
+//         >
+//           Back Home
+//         </button>
+//       </div>
+//     </div>
+//   );
+// };
 
-export default ResultsPage;
+// export default ResultsPage;
+
+
+import React,{useEffect} from "react";
+
+export default function ResultReview({questions,answers,score}){
+
+// auto close after 60 sec
+useEffect(()=>{
+ setTimeout(()=>{
+   window.close();
+ },60000);
+},[]);
+
+
+return(
+<div style={{padding:30}}>
+
+<h2>
+Score : {score} / 50
+</h2>
+
+<hr/>
+
+{questions.map((q,i)=>{
+
+ const correct = q.answer;
+ const chosen = answers[i];
+
+ return(
+ <div key={i} style={{marginBottom:20}}>
+
+ <b>Q{i+1}. {q.question}</b>
+
+ <div>
+ Your Answer:
+ {q.options[chosen-1] || "Not Answered"}
+ </div>
+
+ <div>
+ Correct Answer:
+ {q.options[correct-1]}
+ </div>
+
+ <div style={{color:"green"}}>
+ Explanation:
+ {q.explanation}
+ </div>
+
+ <hr/>
+
+ </div>
+ );
+
+})}
+
+</div>
+);
+}
