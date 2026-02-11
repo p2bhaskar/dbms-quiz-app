@@ -773,193 +773,267 @@
 import React, { useState } from "react";
 import ResultReview from "./ResultReview";
 
-const API_URL =
-"https://script.google.com/macros/s/AKfycbyBONu9pdAxFGjNwSHs1MQHc__6ISOhnsOkx_dbx1M_oln7zdTpHGzPpABz4_mszZYFnA/exec";
+// REPLACE WITH YOUR ACTUAL DEPLOYED WEB APP URL
+const API_URL = "https://script.google.com/macros/s/AKfycbxwICX69imPXMz_JS7y1QiODkr3_iNTquhfuHQILUf73BqY1J8WCvZ343_n00uY4qhULQ/exec";
 
-
-// ---------- SAFE API CALL (CORS FIX) ----------
+// ---------- API CALL ----------
 const callAPI = async (payload) => {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "text/plain"
-    },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors", // This bypasses CORS but limits response access
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload),
+      redirect: "follow"
+    });
 
-  return res.json();
+    // With no-cors, we can't read the response
+    // So we need a different approach
+    return { status: "OK" };
+    
+  } catch (error) {
+    console.error("API Error:", error);
+    throw error;
+  }
 };
 
+// Better approach - use JSONP-style callback
+const callAPIWithJsonp = (payload) => {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'callback_' + Date.now();
+    
+    window[callbackName] = (data) => {
+      delete window[callbackName];
+      resolve(data);
+    };
+
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=${payload.action}&callback=${callbackName}&data=${encodeURIComponent(JSON.stringify(payload))}`;
+    script.onerror = reject;
+    document.body.appendChild(script);
+  });
+};
 
 export default function Quiz() {
+  const [name, setName] = useState("");
+  const [prn, setPrn] = useState("");
+  const [started, setStarted] = useState(false);
+  const [questions, setQuestions] = useState([]);
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [finished, setFinished] = useState(false);
+  const [score, setScore] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-const [name,setName]=useState("");
-const [prn,setPrn]=useState("");
+  // ---------- RANDOMIZE ----------
+  function shuffle(arr) {
+    return [...arr]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 50);
+  }
 
-const [started,setStarted]=useState(false);
-const [questions,setQuestions]=useState([]);
-const [current,setCurrent]=useState(0);
-const [answers,setAnswers]=useState({});
-const [finished,setFinished]=useState(false);
-const [score,setScore]=useState(0);
+  // ---------- START QUIZ ----------
+  const startQuiz = async () => {
+    if (!name || !prn) {
+      alert("Enter Name & PRN");
+      return;
+    }
 
+    setLoading(true);
 
-// ---------- RANDOMIZE ----------
-function shuffle(arr){
-  return [...arr]
-    .sort(()=>Math.random()-0.5)
-    .slice(0,50);
+    try {
+      // Validate PRN
+      const validResponse = await fetch(`${API_URL}?action=validate&prn=${prn}`);
+      const valid = await validResponse.json();
+
+      if (valid.status === "NOT_ALLOWED") {
+        alert("PRN not allowed");
+        setLoading(false);
+        return;
+      }
+
+      if (valid.status === "ALREADY_SUBMITTED") {
+        alert("You already attempted exam");
+        setLoading(false);
+        return;
+      }
+
+      // Get questions
+      const questionsResponse = await fetch(`${API_URL}?action=questions`);
+      const data = await questionsResponse.json();
+
+      setQuestions(shuffle(data));
+      setStarted(true);
+      
+    } catch (error) {
+      console.error("Error starting quiz:", error);
+      alert("Error connecting to server. Please try again.");
+    }
+    
+    setLoading(false);
+  };
+
+  // ---------- SELECT OPTION ----------
+  const selectOption = (index) => {
+    setAnswers({
+      ...answers,
+      [current]: index + 1
+    });
+  };
+
+  // ---------- NEXT ----------
+  const next = () => {
+    if (current < questions.length - 1) {
+      setCurrent(current + 1);
+    } else {
+      submitExam();
+    }
+  };
+
+  // ---------- SUBMIT ----------
+  const submitExam = async () => {
+    let s = 0;
+    questions.forEach((q, i) => {
+      if (answers[i] === q.answer) s++;
+    });
+    
+    setScore(s);
+    setLoading(true);
+
+    try {
+      await fetch(`${API_URL}?action=submit&name=${encodeURIComponent(name)}&prn=${prn}&score=${s}&total=50`);
+      setFinished(true);
+    } catch (error) {
+      console.error("Error submitting exam:", error);
+      alert("Error submitting exam. Your score is " + s);
+      setFinished(true);
+    }
+    
+    setLoading(false);
+  };
+
+  // ---------- START SCREEN ----------
+  if (!started) {
+    return (
+      <div style={{ padding: 30, maxWidth: 500, margin: "auto" }}>
+        <h1 style={{ textAlign: "center", color: "#333" }}>C Programming Unit 1 Quiz</h1>
+        
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", marginBottom: 5 }}>Name:</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{
+              width: "100%",
+              padding: 10,
+              fontSize: 16,
+              border: "1px solid #ccc",
+              borderRadius: 4
+            }}
+            disabled={loading}
+          />
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", marginBottom: 5 }}>PRN:</label>
+          <input
+            type="text"
+            value={prn}
+            onChange={(e) => setPrn(e.target.value)}
+            style={{
+              width: "100%",
+              padding: 10,
+              fontSize: 16,
+              border: "1px solid #ccc",
+              borderRadius: 4
+            }}
+            disabled={loading}
+          />
+        </div>
+
+        <button
+          onClick={startQuiz}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: 15,
+            fontSize: 18,
+            backgroundColor: loading ? "#ccc" : "#4CAF50",
+            color: "white",
+            border: "none",
+            borderRadius: 4,
+            cursor: loading ? "not-allowed" : "pointer"
+          }}
+        >
+          {loading ? "Loading..." : "Start Exam"}
+        </button>
+      </div>
+    );
+  }
+
+  // ---------- RESULT ----------
+  if (finished) {
+    return <ResultReview questions={questions} answers={answers} score={score} />;
+  }
+
+  // ---------- QUIZ UI ----------
+  const q = questions[current];
+  
+  if (!q) {
+    return <div style={{ padding: 30 }}>Loading question...</div>;
+  }
+
+  return (
+    <div style={{ padding: 30, maxWidth: 800, margin: "auto" }}>
+      <h3 style={{ color: "#555" }}>Question {current + 1} / 50</h3>
+      
+      <h2 style={{ marginBottom: 30, color: "#333" }}>{q.question}</h2>
+
+      <div>
+        {q.options.map((op, i) => (
+          <div
+            key={i}
+            style={{
+              marginBottom: 15,
+              padding: 15,
+              border: answers[current] === i + 1 ? "2px solid #4CAF50" : "1px solid #ddd",
+              borderRadius: 8,
+              cursor: "pointer",
+              backgroundColor: answers[current] === i + 1 ? "#e8f5e9" : "white"
+            }}
+            onClick={() => selectOption(i)}
+          >
+            <input
+              type="radio"
+              checked={answers[current] === i + 1}
+              onChange={() => selectOption(i)}
+              style={{ marginRight: 10 }}
+            />
+            {op}
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={next}
+        disabled={!answers[current]}
+        style={{
+          marginTop: 30,
+          padding: 15,
+          fontSize: 18,
+          backgroundColor: answers[current] ? "#2196F3" : "#ccc",
+          color: "white",
+          border: "none",
+          borderRadius: 4,
+          cursor: answers[current] ? "pointer" : "not-allowed",
+          width: "100%"
+        }}
+      >
+        {current === 49 ? "Submit Exam" : "Next"}
+      </button>
+    </div>
+  );
 }
-
-
-// ---------- START QUIZ ----------
-const startQuiz = async()=>{
-
-  if(!name || !prn){
-    alert("Enter Name & PRN");
-    return;
-  }
-
-  const valid = await callAPI({
-    action:"validate",
-    prn:prn
-  });
-
-  if(valid.status==="NOT_ALLOWED"){
-    alert("PRN not allowed");
-    return;
-  }
-
-  if(valid.status==="ALREADY_SUBMITTED"){
-    alert("You already attempted exam");
-    return;
-  }
-
-  const data = await callAPI({
-    action:"questions"
-  });
-
-  setQuestions(shuffle(data));
-  setStarted(true);
-};
-
-
-// ---------- SELECT OPTION ----------
-const selectOption=(index)=>{
-  setAnswers({
-    ...answers,
-    [current]: index+1
-  });
-};
-
-
-// ---------- NEXT ----------
-const next=()=>{
-  if(current < questions.length-1)
-    setCurrent(current+1);
-  else
-    submitExam();
-};
-
-
-// ---------- SUBMIT ----------
-const submitExam = async()=>{
-
-  let s=0;
-
-  questions.forEach((q,i)=>{
-    if(answers[i] === q.answer)
-      s++;
-  });
-
-  setScore(s);
-
-  await callAPI({
-    action:"submit",
-    name:name,
-    prn:prn,
-    score:s,
-    total:50
-  });
-
-  setFinished(true);
-};
-
-
-// ---------- START SCREEN ----------
-if(!started)
-return(
-<div style={{padding:40}}>
-
-<h2>C Programming Unit 1 Quiz</h2>
-
-<input
- placeholder="Name"
- value={name}
- onChange={e=>setName(e.target.value)}
-/>
-
-<br/><br/>
-
-<input
- placeholder="PRN"
- value={prn}
- onChange={e=>setPrn(e.target.value)}
-/>
-
-<br/><br/>
-
-<button onClick={startQuiz}>
-Start Exam
-</button>
-
-</div>
-);
-
-
-// ---------- RESULT ----------
-if(finished)
-return(
-<ResultReview
-  questions={questions}
-  answers={answers}
-  score={score}
-/>
-);
-
-
-// ---------- QUIZ UI ----------
-const q=questions[current];
-
-return(
-<div style={{padding:30}}>
-
-<h3>
-Question {current+1} / 50
-</h3>
-
-<p>{q.question}</p>
-
-{q.options.map((op,i)=>(
-<div key={i}>
-<label>
-<input
- type="radio"
- checked={answers[current]===i+1}
- onChange={()=>selectOption(i)}
-/>
-{op}
-</label>
-</div>
-))}
-
-<br/>
-
-<button onClick={next}>
-{current===49 ? "Submit Exam" : "Next"}
-</button>
-
-</div>
-);
-}
-
