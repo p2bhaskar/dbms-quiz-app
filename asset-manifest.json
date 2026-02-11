@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/dbms-quiz-app/static/css/main.ace16c25.css",
-    "main.js": "/dbms-quiz-app/static/js/main.d6491e53.js",
+    "main.js": "/dbms-quiz-app/static/js/main.ac9251cf.js",
     "static/js/453.83862677.chunk.js": "/dbms-quiz-app/static/js/453.83862677.chunk.js",
     "index.html": "/dbms-quiz-app/index.html",
     "main.ace16c25.css.map": "/dbms-quiz-app/static/css/main.ace16c25.css.map",
-    "main.d6491e53.js.map": "/dbms-quiz-app/static/js/main.d6491e53.js.map",
+    "main.ac9251cf.js.map": "/dbms-quiz-app/static/js/main.ac9251cf.js.map",
     "453.83862677.chunk.js.map": "/dbms-quiz-app/static/js/453.83862677.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.ace16c25.css",
-    "static/js/main.d6491e53.js"
+    "static/js/main.ac9251cf.js"
   ]
 }
