@@ -1087,7 +1087,7 @@
 //   );
 // }
 
-//import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import ResultReview from "./ResultReview";
 
 const API_URL = "https://script.google.com/macros/s/AKfycbzwusVB7uZ0OHHQea3hqSforR0U5IfUJZ1YsCT5CAdCnsJwQ_fczQ6UJ-MfTnJTUdoA3Q/exec";
