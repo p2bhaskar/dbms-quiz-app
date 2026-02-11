@@ -774,47 +774,7 @@ import React, { useState } from "react";
 import ResultReview from "./ResultReview";
 
 // REPLACE WITH YOUR ACTUAL DEPLOYED WEB APP URL
-const API_URL = "https://script.google.com/macros/s/AKfycbxfkMiaVFcwfjxGw0ahGdTnaw1njL3wS5DDW2Teul2zzf5A7FNkndmwcNe6tKxTPt6GIg/exec";
-
-// ---------- API CALL ----------
-const callAPI = async (payload) => {
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors", // This bypasses CORS but limits response access
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload),
-      redirect: "follow"
-    });
-
-    // With no-cors, we can't read the response
-    // So we need a different approach
-    return { status: "OK" };
-    
-  } catch (error) {
-    console.error("API Error:", error);
-    throw error;
-  }
-};
-
-// Better approach - use JSONP-style callback
-const callAPIWithJsonp = (payload) => {
-  return new Promise((resolve, reject) => {
-    const callbackName = 'callback_' + Date.now();
-    
-    window[callbackName] = (data) => {
-      delete window[callbackName];
-      resolve(data);
-    };
-
-    const script = document.createElement('script');
-    script.src = `${API_URL}?action=${payload.action}&callback=${callbackName}&data=${encodeURIComponent(JSON.stringify(payload))}`;
-    script.onerror = reject;
-    document.body.appendChild(script);
-  });
-};
+const API_URL = "https://script.google.com/macros/s/AKfycbwVLWrHbQ1Bs3xEUZ1D2yT1fLNQCbLBh8whckpqYklMkpCvbNiFvVZTUTHJjgFNONDwtg/exec";
 
 export default function Quiz() {
   const [name, setName] = useState("");
@@ -842,11 +802,39 @@ export default function Quiz() {
     }
 
     setLoading(true);
+    console.log("=== STARTING QUIZ ===");
+    console.log("Name:", name);
+    console.log("PRN:", prn);
 
     try {
       // Validate PRN
-      const validResponse = await fetch(`${API_URL}?action=validate&prn=${prn}`);
-      const valid = await validResponse.json();
+      const validateURL = `${API_URL}?action=validate&prn=${prn}&_=${Date.now()}`;
+      console.log("Validate URL:", validateURL);
+      
+      const validResponse = await fetch(validateURL);
+      console.log("Validate Response Status:", validResponse.status);
+      console.log("Validate Response OK:", validResponse.ok);
+      
+      const validText = await validResponse.text();
+      console.log("Validate Raw Response:", validText);
+      
+      let valid;
+      try {
+        valid = JSON.parse(validText);
+        console.log("Validate Parsed Response:", valid);
+      } catch (parseError) {
+        console.error("Failed to parse validate response:", parseError);
+        alert("Error: Server returned invalid response for validation");
+        setLoading(false);
+        return;
+      }
+
+      if (valid.status === "ERROR") {
+        console.error("Server error:", valid.message);
+        alert("Server error: " + valid.message);
+        setLoading(false);
+        return;
+      }
 
       if (valid.status === "NOT_ALLOWED") {
         alert("PRN not allowed");
@@ -861,15 +849,61 @@ export default function Quiz() {
       }
 
       // Get questions
-      const questionsResponse = await fetch(`${API_URL}?action=questions`);
-      const data = await questionsResponse.json();
+      const questionsURL = `${API_URL}?action=questions&_=${Date.now()}`;
+      console.log("Questions URL:", questionsURL);
+      
+      const questionsResponse = await fetch(questionsURL);
+      console.log("Questions Response Status:", questionsResponse.status);
+      console.log("Questions Response OK:", questionsResponse.ok);
+      
+      const questionsText = await questionsResponse.text();
+      console.log("Questions Raw Response:", questionsText);
+      
+      let data;
+      try {
+        data = JSON.parse(questionsText);
+        console.log("Questions Parsed Response:", data);
+        console.log("Questions Count:", data.length);
+        console.log("First Question:", data[0]);
+      } catch (parseError) {
+        console.error("Failed to parse questions response:", parseError);
+        alert("Error: Server returned invalid response for questions");
+        setLoading(false);
+        return;
+      }
 
-      setQuestions(shuffle(data));
+      if (data.status === "ERROR") {
+        console.error("Server error:", data.message);
+        alert("Server error: " + data.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!Array.isArray(data)) {
+        console.error("Questions response is not an array:", typeof data);
+        alert("Error: Invalid questions format");
+        setLoading(false);
+        return;
+      }
+
+      if (data.length === 0) {
+        alert("No questions available");
+        setLoading(false);
+        return;
+      }
+
+      const shuffled = shuffle(data);
+      console.log("Shuffled questions count:", shuffled.length);
+      
+      setQuestions(shuffled);
       setStarted(true);
       
     } catch (error) {
-      console.error("Error starting quiz:", error);
-      alert("Error connecting to server. Please try again.");
+      console.error("=== ERROR STARTING QUIZ ===");
+      console.error("Error type:", error.constructor.name);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      alert("Error connecting to server: " + error.message);
     }
     
     setLoading(false);
@@ -894,19 +928,34 @@ export default function Quiz() {
 
   // ---------- SUBMIT ----------
   const submitExam = async () => {
+    console.log("=== SUBMITTING EXAM ===");
+    
     let s = 0;
     questions.forEach((q, i) => {
       if (answers[i] === q.answer) s++;
     });
     
+    console.log("Final Score:", s);
     setScore(s);
     setLoading(true);
 
     try {
-      await fetch(`${API_URL}?action=submit&name=${encodeURIComponent(name)}&prn=${prn}&score=${s}&total=50`);
+      const submitURL = `${API_URL}?action=submit&name=${encodeURIComponent(name)}&prn=${prn}&score=${s}&total=50&_=${Date.now()}`;
+      console.log("Submit URL:", submitURL);
+      
+      const response = await fetch(submitURL);
+      console.log("Submit Response Status:", response.status);
+      
+      const responseText = await response.text();
+      console.log("Submit Raw Response:", responseText);
+      
+      const result = JSON.parse(responseText);
+      console.log("Submit Parsed Response:", result);
+      
       setFinished(true);
     } catch (error) {
-      console.error("Error submitting exam:", error);
+      console.error("=== ERROR SUBMITTING EXAM ===");
+      console.error("Error:", error);
       alert("Error submitting exam. Your score is " + s);
       setFinished(true);
     }
