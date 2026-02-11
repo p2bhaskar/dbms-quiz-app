@@ -774,7 +774,7 @@ import React, { useState } from "react";
 import ResultReview from "./ResultReview";
 
 // REPLACE WITH YOUR ACTUAL DEPLOYED WEB APP URL
-const API_URL = "https://script.google.com/macros/s/AKfycbzOrLdTJJA4nFq_-pUVVHgnpMJgm-gC-U9H9XJ1RzR3mmnVEZoLvzm1-0CEVo-4_drb6w/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzwusVB7uZ0OHHQea3hqSforR0U5IfUJZ1YsCT5CAdCnsJwQ_fczQ6UJ-MfTnJTUdoA3Q/exec";
 
 export default function Quiz() {
   const [name, setName] = useState("");
