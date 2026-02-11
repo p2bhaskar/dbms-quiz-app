@@ -774,7 +774,7 @@ import React, { useState } from "react";
 import ResultReview from "./ResultReview";
 
 // REPLACE WITH YOUR ACTUAL DEPLOYED WEB APP URL
-const API_URL = "https://script.google.com/macros/s/AKfycbxsNp8j-yvnxc_SVV4u8bCogn0hGWMdSc-FOF2Zuh0nZQcq-fFS0oBCnzFXTELNpTLnMw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwm9vVCg-e6QPqR8ZgMUe78rAgKibb88eAVIq8rYvt16SOYZkGyUT9pv3IOZ1Eq6lt2zw/exec";
 
 // ---------- API CALL ----------
 const callAPI = async (payload) => {
